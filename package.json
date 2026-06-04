@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Indiana MBE Pilot Program static site",
   "scripts": {
-    "start": "serve MBE-Pilot-Application/public"
+    "start": "serve public"
   },
   "dependencies": {
     "serve": "^14.2.0"

@@ -4,6 +4,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx serve MBE-Pilot-Application/public"
+    "startCommand": "npx serve public"
   }
 }

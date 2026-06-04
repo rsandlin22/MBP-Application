@@ -1,9 +1,0 @@
-{
-  "build": {
-    "env": {},
-    "command": "npm install"
-  },
-  "deploy": {
-    "command": "npx serve public"
-  }
-}
