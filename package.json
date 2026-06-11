@@ -1,11 +1,17 @@
 {
-  "name": "mbp-application",
+  "name": "homebase-budget",
   "version": "1.0.0",
-  "description": "Indiana MBE Pilot Program static site",
+  "description": "Indiana MBE Pilot Program — Homebase Budget Application",
+  "homepage": "https://rsandlin22.github.io/homebase-budget/",
   "scripts": {
-    "start": "serve public"
+    "start": "serve public",
+    "predeploy": "echo Deploying to GitHub Pages...",
+    "deploy": "gh-pages -d public"
   },
   "dependencies": {
     "serve": "^14.2.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.0.0"
   }
 }
