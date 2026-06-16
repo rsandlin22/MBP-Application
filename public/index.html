@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Indiana MBE Pilot Program — Application</title>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root {
     --cream: #faf8f4;
@@ -1596,7 +1597,10 @@ function handleMemberSearch(inputEl) {
 // ── SECTION NAVIGATION ──
 let currentSection = 0;
 const TOTAL_SECTIONS = 13;
-const SUBMISSION_EMAIL = 'rsandlin@doe.in.gov';
+const EMAILJS_SERVICE_ID  = 'service_cgkm4gw';
+const EMAILJS_TEMPLATE_ID = 'template_3brsyep';
+const EMAILJS_PUBLIC_KEY  = 'e6y_RmJ-bZuivaGEWDXAY';
+emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 let consortiumRequired = false;
 let visitedSections = new Set([0]);
 
@@ -1837,33 +1841,56 @@ async function submitApplication() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
   try {
-    const controller = new AbortController();
-    const fetchTimeout = setTimeout(() => controller.abort(), 30000);
-    const resp = await fetch('/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        orgName,
-        contactName: document.getElementById('contactName').value.trim(),
-        contactEmail: document.getElementById('contactEmail').value.trim(),
-        summary: formatEmailBody(),
-        htmlSnapshot: generateHTMLSnapshot(),
-      }),
-    });
-    clearTimeout(fetchTimeout);
+    const v = id => (document.getElementById(id) || {}).value || '';
+    const structRadio = document.querySelector('input[name="appStructure"]:checked');
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || 'Server error');
-    }
+    // Build a hidden form with all template params + HTML file attachment
+    const form = document.createElement('form');
+    const params = {
+      org_name:      orgName,
+      org_id:        v('orgId'),
+      contact_name:  v('contactName'),
+      contact_title: v('contactTitle'),
+      contact_email: v('contactEmail'),
+      contact_phone: v('contactPhone'),
+      org_address:   v('orgAddress'),
+      org_city:      v('orgCity'),
+      org_zip:       v('orgZip'),
+      app_structure: structRadio ? structRadio.value : 'Not selected',
+      sig_name:      sigName,
+      sig_title:     v('sigTitle'),
+      sig_signature: sigSig,
+      sig_date:      v('sigDate'),
+      summary:       formatEmailBody(),
+    };
+    Object.entries(params).forEach(([key, val]) => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden'; inp.name = key; inp.value = val;
+      form.appendChild(inp);
+    });
+
+    // Attach the full HTML snapshot as a file
+    const safeOrg = orgName.replace(/[^a-z0-9]/gi, '_');
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'attachment';
+    const blob = new Blob([generateHTMLSnapshot()], { type: 'text/html' });
+    const file = new File([blob], safeOrg + '_MBE_Application.html', { type: 'text/html' });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    form.appendChild(fileInput);
+    document.body.appendChild(form);
+
+    await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, form);
+    document.body.removeChild(form);
 
     if (btn) { btn.textContent = '✅ Submitted'; }
-    showToast('🎉 Application submitted! A confirmation has been sent to your email.');
+    showToast('🎉 Application submitted successfully!');
   } catch (err) {
+    document.querySelector('form[style]') && document.body.removeChild(document.querySelector('form[style]'));
     if (btn) { btn.disabled = false; btn.textContent = '🚀 Submit Application'; }
-    const msg = err.name === 'AbortError' ? 'Request timed out — please try again' : err.message;
-    showToast('⚠️ Submission failed: ' + msg);
+    showToast('⚠️ Submission failed: ' + (err.text || err.message || JSON.stringify(err)));
     console.error(err);
   }
 }
