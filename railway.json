@@ -4,6 +4,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx serve public"
+    "startCommand": "node server.js"
   }
 }
