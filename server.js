@@ -4,7 +4,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SUBMISSION_TO = process.env.SUBMISSION_EMAIL || 'mjuneja@doe.in.gov';
+const SUBMISSION_TO = process.env.SUBMISSION_EMAIL || 'rsandlin@doe.in.gov';
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
