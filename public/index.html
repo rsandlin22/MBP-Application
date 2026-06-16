@@ -1120,10 +1120,7 @@
           <label>Intervention data tracking <span class="req">*</span><span class="hint">Progress monitoring cycles, evidence-based supports to evaluate learning acceleration</span></label>
           <textarea id="s8q2" rows="3" placeholder="How will you collect and track intervention data?"></textarea>
         </div>
-        <div class="field-group">
-          <label>Subgroup & equity-focused metrics <span class="req">*</span><span class="hint">e.g., opportunity gaps in pacing, access to advanced coursework, participation in interventions</span></label>
-          <textarea id="s8q3" rows="3" placeholder="What equity metrics will you monitor locally?"></textarea>
-        </div>
+
         <div class="field-group">
           <label>Qualitative data <span class="hint">Student interviews, teacher reflections, focus groups, classroom artifacts</span></label>
           <textarea id="s8q4" rows="3" placeholder="What qualitative data will help you understand implementation progress?"></textarea>
@@ -1831,7 +1828,7 @@ function formatEmailBody() {
   return lines.join('\n');
 }
 
-function submitApplication() {
+async function submitApplication() {
   const sigName = document.getElementById('sigName').value.trim();
   const sigSig = document.getElementById('sigSignature').value.trim();
   const orgName = document.getElementById('orgName').value.trim();
@@ -1839,27 +1836,44 @@ function submitApplication() {
   if (!sigName || !sigSig) { showToast('⚠️ Please complete the authorized signatory name and signature before submitting'); return; }
 
   saveProgress(true);
-  downloadApplication();
 
-  const subject = encodeURIComponent('MBE Pilot Application — ' + orgName);
-  const body = encodeURIComponent(formatEmailBody() + '\n\n[Please attach the downloaded HTML file to this email before sending]');
-  const mailto = 'mailto:' + SUBMISSION_EMAIL + '?subject=' + subject + '&body=' + body;
+  const btn = document.querySelector('.btn-submit');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Submitting…'; }
 
-  setTimeout(() => {
-    window.location.href = mailto;
-    showToast('📧 Your email client should open — attach the downloaded file and send');
-  }, 800);
+  try {
+    const resp = await fetch('/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orgName,
+        contactName: document.getElementById('contactName').value.trim(),
+        contactEmail: document.getElementById('contactEmail').value.trim(),
+        summary: formatEmailBody(),
+        htmlSnapshot: generateHTMLSnapshot(),
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'Server error');
+    }
+
+    if (btn) { btn.textContent = '✅ Submitted'; }
+    showToast('🎉 Application submitted! A confirmation has been sent to your email.');
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Submit Application'; }
+    showToast('⚠️ Submission failed: ' + err.message);
+    console.error(err);
+  }
 }
 
 function printApplication() {
   window.print();
 }
 
-function downloadApplication() {
-  // 1. Clone the entire document
+function generateHTMLSnapshot() {
   const clone = document.documentElement.cloneNode(true);
 
-  // 2. Inject current values into all inputs/textareas/selects in the clone
   const liveEls = document.querySelectorAll('input, textarea, select');
   const cloneEls = clone.querySelectorAll('input, textarea, select');
   liveEls.forEach((el, i) => {
@@ -1876,19 +1890,16 @@ function downloadApplication() {
     }
   });
 
-  // 3. Make ALL form sections visible in the clone
   clone.querySelectorAll('.form-section').forEach(s => {
     s.style.display = 'block';
     s.classList.add('active');
   });
 
-  // 4. Make all conditional blocks that are currently visible show in clone
   document.querySelectorAll('.conditional-block.visible').forEach(el => {
     const cloneEl = clone.querySelector('#' + el.id);
     if (cloneEl) cloneEl.classList.add('visible');
   });
 
-  // 5. Hide interactive nav elements and the sticky header in print view
   const style = clone.ownerDocument.createElement('style');
   style.textContent = `
     .app-header { position: relative !important; }
@@ -1903,11 +1914,13 @@ function downloadApplication() {
   `;
   clone.querySelector('head').appendChild(style);
 
-  // 6. Remove script tags so it's a static snapshot
   clone.querySelectorAll('script').forEach(s => s.remove());
 
-  // 7. Serialize and trigger download
-  const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+  return '<!DOCTYPE html>\n' + clone.outerHTML;
+}
+
+function downloadApplication() {
+  const html = generateHTMLSnapshot();
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
